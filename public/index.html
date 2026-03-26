@@ -458,53 +458,6 @@
     #toast.success { background: var(--green); color: var(--black); }
     #toast.error { background: var(--danger); color: var(--white); }
 
-    /* ── Admin ── */
-    .admin-toggle { text-align: right; margin-bottom: 1rem; }
-    .admin-panel { display: none; }
-    .admin-panel.open { display: block; }
-
-    .admin-filters { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1rem; }
-    .filter-btn {
-      font-family: 'Barlow Condensed', Arial, sans-serif;
-      font-weight: 700;
-      font-size: .78rem;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-      background: transparent;
-      color: var(--muted);
-      border: 1.5px solid var(--border);
-      padding: .3rem 1rem;
-      border-radius: 9999px;
-      cursor: pointer;
-      transition: all .15s;
-    }
-    .filter-btn:hover { border-color: var(--green); color: var(--green); }
-    .filter-btn.active { background: var(--green); color: var(--black); border-color: var(--green); }
-
-    .reg-table-wrap {
-      overflow-x: auto;
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-    }
-    table { width: 100%; border-collapse: collapse; background: var(--white); font-size: .875rem; }
-    thead tr { background: var(--dark); }
-    th {
-      padding: .75rem 1rem;
-      text-align: left;
-      font-family: 'Barlow Condensed', Arial, sans-serif;
-      font-weight: 700;
-      font-size: .78rem;
-      letter-spacing: .1em;
-      text-transform: uppercase;
-      color: rgba(255,255,255,.7);
-      white-space: nowrap;
-    }
-    td { padding: .7rem 1rem; border-top: 1px solid var(--border); vertical-align: top; }
-    tr:hover td { background: var(--surface); }
-
-    .empty-state { text-align: center; color: var(--muted); padding: 2rem; font-size: .95rem; }
-    .export-row { margin-top: .75rem; text-align: right; }
-
     /* ── Footer ── */
     footer {
       background: var(--dark);
@@ -563,6 +516,20 @@
         <input type="email" id="email" placeholder="jane@example.com" required autocomplete="email" />
       </div>
       <div class="field">
+        <label for="phone">Phone Number <span style="color:var(--danger)">*</span></label>
+        <input type="tel" id="phone" placeholder="(614) 555-0100" required autocomplete="tel" />
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label for="ecName">Emergency Contact Name <span style="color:var(--danger)">*</span></label>
+          <input type="text" id="ecName" placeholder="John Smith" required />
+        </div>
+        <div class="field">
+          <label for="ecPhone">Emergency Contact Phone <span style="color:var(--danger)">*</span></label>
+          <input type="tel" id="ecPhone" placeholder="(614) 555-0101" required />
+        </div>
+      </div>
+      <div class="field">
         <label for="questions">Cycling Questions or Concerns</label>
         <textarea id="questions" placeholder="Optional — share any questions or concerns you'd like addressed at the session."></textarea>
       </div>
@@ -573,33 +540,6 @@
     </form>
   </div>
 
-  <div class="admin-toggle">
-    <button class="btn btn-outline btn-sm" id="adminToggle">View Registrations</button>
-  </div>
-
-  <div class="admin-panel" id="adminPanel">
-    <div class="section-label">All Registrations</div>
-    <div class="admin-filters" id="adminFilters"></div>
-    <div class="reg-table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Session</th>
-            <th>Questions / Concerns</th>
-            <th>Registered At</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="regTableBody"></tbody>
-      </table>
-    </div>
-    <div class="export-row">
-      <button class="btn btn-outline-green btn-sm" id="exportBtn">Export CSV</button>
-    </div>
-  </div>
 </main>
 
 <footer>
@@ -654,7 +594,6 @@
   // ── State ──
   let slots = [];
   let selectedSlot = null;
-  let adminFilter = 'all';
   let pendingPayload = null;
 
   // ── API helpers ──
@@ -712,17 +651,23 @@
     e.preventDefault();
     if (!selectedSlot) { showToast('Please select a session first.', 'error'); return; }
 
-    const fname = document.getElementById('fname').value.trim();
-    const lname = document.getElementById('lname').value.trim();
-    const email = document.getElementById('email').value.trim();
+    const fname     = document.getElementById('fname').value.trim();
+    const lname     = document.getElementById('lname').value.trim();
+    const email     = document.getElementById('email').value.trim();
+    const phone     = document.getElementById('phone').value.trim();
+    const ecName    = document.getElementById('ecName').value.trim();
+    const ecPhone   = document.getElementById('ecPhone').value.trim();
     const questions = document.getElementById('questions').value.trim();
 
     if (!fname || !lname) { showToast('Please enter your full name.', 'error'); return; }
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       showToast('Please enter a valid email address.', 'error'); return;
     }
+    if (!phone) { showToast('Please enter your phone number.', 'error'); return; }
+    if (!ecName)  { showToast('Please enter an emergency contact name.', 'error'); return; }
+    if (!ecPhone) { showToast('Please enter an emergency contact phone number.', 'error'); return; }
 
-    pendingPayload = { slotId: selectedSlot, fname, lname, email, questions };
+    pendingPayload = { slotId: selectedSlot, fname, lname, email, phone, ecName, ecPhone, questions };
     openWaiver();
   });
 
@@ -778,95 +723,11 @@
       document.getElementById('slotSelectNote').innerHTML = '← Select a session above to continue.';
       document.getElementById('submitBtn').disabled = true;
       await loadSlots();
-      if (document.getElementById('adminPanel').classList.contains('open')) {
-        renderFilters(); renderTable();
-      }
     } catch(err) {
       closeWaiver();
       showToast(err.message, 'error');
     } finally {
       btn.textContent = 'I Agree & Register';
-    }
-  });
-
-  // ── Admin panel ──
-  document.getElementById('adminToggle').addEventListener('click', async () => {
-    const panel = document.getElementById('adminPanel');
-    const open = panel.classList.toggle('open');
-    document.getElementById('adminToggle').textContent = open ? 'Hide Registrations' : 'View Registrations';
-    if (open) { renderFilters(); await renderTable(); }
-  });
-
-  function renderFilters() {
-    const container = document.getElementById('adminFilters');
-    container.innerHTML = '';
-    const options = [{ id: 'all', label: 'All Sessions' }, ...slots.map(s => ({ id: s.id, label: s.date }))];
-    options.forEach(opt => {
-      const btn = document.createElement('button');
-      btn.className = 'filter-btn' + (adminFilter === opt.id ? ' active' : '');
-      btn.textContent = opt.label;
-      btn.addEventListener('click', async () => { adminFilter = opt.id; renderFilters(); await renderTable(); });
-      container.appendChild(btn);
-    });
-  }
-
-  async function renderTable() {
-    const tbody = document.getElementById('regTableBody');
-    try {
-      const url = adminFilter === 'all' ? '/api/registrations' : `/api/registrations?slotId=${adminFilter}`;
-      const regs = await api('GET', url);
-      if (regs.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No registrations yet.</td></tr>`;
-        return;
-      }
-      tbody.innerHTML = regs.map((r, i) => `
-        <tr>
-          <td>${i + 1}</td>
-          <td>${esc(r.fname)} ${esc(r.lname)}</td>
-          <td>${esc(r.email)}</td>
-          <td>${esc(r.slotLabel)}</td>
-          <td>${r.questions ? esc(r.questions) : '<span style="color:var(--muted)">—</span>'}</td>
-          <td style="white-space:nowrap">${new Date(r.registeredAt).toLocaleString()}</td>
-          <td><button class="btn btn-danger btn-sm" onclick="deleteReg(${r.id})">Remove</button></td>
-        </tr>
-      `).join('');
-    } catch(e) {
-      tbody.innerHTML = `<tr><td colspan="7" class="empty-state" style="color:var(--danger)">Failed to load registrations.</td></tr>`;
-    }
-  }
-
-  window.deleteReg = async function(id) {
-    if (!confirm('Remove this registration? This cannot be undone.')) return;
-    try {
-      await api('DELETE', `/api/registrations/${id}`);
-      showToast('Registration removed.');
-      await loadSlots();
-      await renderTable();
-    } catch(e) {
-      showToast(e.message, 'error');
-    }
-  };
-
-  // ── CSV Export ──
-  document.getElementById('exportBtn').addEventListener('click', async () => {
-    try {
-      const regs = await api('GET', '/api/registrations');
-      if (regs.length === 0) { showToast('No registrations to export.', 'error'); return; }
-      const header = ['First Name','Last Name','Email','Session','Questions/Concerns','Waiver Accepted','Registered At'];
-      const rows = regs.map(r => [
-        r.fname, r.lname, r.email, r.slotLabel,
-        r.questions || '',
-        r.waiverAccepted ? 'Yes' : 'No',
-        new Date(r.registeredAt).toLocaleString()
-      ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(','));
-      const csv = [header.join(','), ...rows].join('\r\n');
-      const a = document.createElement('a');
-      a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-      a.download = 'registrations.csv';
-      a.click();
-      showToast('CSV downloaded.');
-    } catch(e) {
-      showToast(e.message, 'error');
     }
   });
 
