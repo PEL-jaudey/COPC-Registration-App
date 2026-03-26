@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Login — Pelotonia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Barlow', Arial, sans-serif;
+      background: #1e1e1e;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 4px;
+      padding: 2.5rem 2rem 2rem;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.5);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      margin-bottom: 1.75rem;
+    }
+    .logo-arrow {
+      color: #44D62C;
+      font-family: 'Barlow Condensed', Arial, sans-serif;
+      font-weight: 800;
+      font-size: 1.4rem;
+      line-height: 1;
+    }
+    .logo-text {
+      font-family: 'Barlow Condensed', Arial, sans-serif;
+      font-weight: 800;
+      font-size: 1.2rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: #1e1e1e;
+    }
+
+    h1 {
+      font-family: 'Barlow Condensed', Arial, sans-serif;
+      font-weight: 800;
+      font-size: 1.5rem;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: #1e1e1e;
+      margin-bottom: 1.5rem;
+    }
+
+    .error-msg {
+      background: #ffebee;
+      border-left: 3px solid #d32f2f;
+      color: #d32f2f;
+      font-size: .85rem;
+      font-weight: 500;
+      padding: .6rem .85rem;
+      border-radius: 0 4px 4px 0;
+      margin-bottom: 1.25rem;
+    }
+
+    .locked-msg {
+      background: #fff3e0;
+      border-left: 3px solid #e65100;
+      color: #e65100;
+      font-size: .85rem;
+      font-weight: 500;
+      padding: .6rem .85rem;
+      border-radius: 0 4px 4px 0;
+      margin-bottom: 1.25rem;
+    }
+
+    label {
+      display: block;
+      font-family: 'Barlow Condensed', Arial, sans-serif;
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: #757575;
+      margin-bottom: .4rem;
+    }
+
+    input[type="password"] {
+      width: 100%;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 4px;
+      padding: .7rem .85rem;
+      font-size: .95rem;
+      font-family: 'Barlow', Arial, sans-serif;
+      color: #3b3b3b;
+      margin-bottom: 1.25rem;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input[type="password"]:focus {
+      outline: none;
+      border-color: #44D62C;
+      box-shadow: 0 0 0 3px rgba(68,214,44,.15);
+    }
+
+    button[type="submit"] {
+      width: 100%;
+      font-family: 'Barlow Condensed', Arial, sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      background: #44D62C;
+      color: #000;
+      border: none;
+      border-radius: 9999px;
+      padding: .75rem;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    button[type="submit"]:hover { background: #35b020; }
+
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 1.25rem;
+      font-size: .82rem;
+      color: #757575;
+      text-decoration: none;
+    }
+    .back-link:hover { color: #3b3b3b; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <span class="logo-arrow">→</span>
+      <span class="logo-text">Pelotonia</span>
+    </div>
+    <h1>Admin Login</h1>
+
+    <!-- Error messages are set by safe URL params (?error=1 or ?error=locked),
+         never by reflecting user input — no XSS risk -->
+    <div id="errorContainer"></div>
+
+    <!-- Password submitted via POST body — never appears in URL or server logs -->
+    <form method="POST" action="/admin">
+      <label for="pw">Password</label>
+      <input type="password" id="pw" name="pw" placeholder="Enter admin password" autofocus autocomplete="current-password" />
+      <button type="submit">Sign In</button>
+    </form>
+
+    <a class="back-link" href="/">← Back to registration</a>
+  </div>
+
+  <script>
+    // Safely read the ?error param and show a canned message — never reflect it
+    const params = new URLSearchParams(window.location.search);
+    const error  = params.get('error');
+    const container = document.getElementById('errorContainer');
+    if (error === 'locked') {
+      container.innerHTML = '<div class="locked-msg">Too many login attempts. Please wait 15 minutes and try again.</div>';
+    } else if (error) {
+      container.innerHTML = '<div class="error-msg">Incorrect password. Please try again.</div>';
+    }
+  </script>
+</body>
+</html>

@@ -1,20 +1,25 @@
 require('dotenv').config();
-const express = require('express');
-const path = require('path');
+const express      = require('express');
+const path         = require('path');
+const crypto       = require('crypto');
+const helmet       = require('helmet');
+const rateLimit    = require('express-rate-limit');
+const cookieParser = require('cookie-parser');
 const { createClient } = require('@supabase/supabase-js');
 
-// ── Supabase client ──────────────────────────────────────────────────────────
+// ── Supabase ──────────────────────────────────────────────────────────────────
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY   // service-role key — keep server-side only
+  process.env.SUPABASE_SERVICE_KEY  // service-role key — server-side only
 );
 
-// ── Admin password ───────────────────────────────────────────────────────────
+// ── Config ────────────────────────────────────────────────────────────────────
+const app            = express();
+const PORT           = process.env.PORT || 3000;
+const MAX_CAPACITY   = 75;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-
-const app  = express();
-const PORT = process.env.PORT || 3000;
-const MAX_CAPACITY = 75;
+const COOKIE_SECRET  = process.env.COOKIE_SECRET;
+const WAIVER_VERSION = '2026-v1';
 
 const SLOTS = [
   { id: 'slot1', date: 'May 15, 2026',  time: '12:00 PM' },
@@ -23,59 +28,129 @@ const SLOTS = [
   { id: 'slot4', date: 'June 27, 2026', time: '12:00 PM' },
 ];
 
+// Field length limits
+const FIELD_LIMITS = {
+  fname:     100,
+  lname:     100,
+  email:     254,
+  phone:      30,
+  ecName:    100,
+  ecPhone:    30,
+  questions: 2000,
+};
+
+// ── Auth helpers ──────────────────────────────────────────────────────────────
+// Produces a stable HMAC token from the cookie secret — stateless, no DB needed
+function makeAdminToken() {
+  return crypto
+    .createHmac('sha256', COOKIE_SECRET)
+    .update('pelotonia-admin-v1')
+    .digest('hex');
+}
+
+function isAdminAuthenticated(req) {
+  const token = req.cookies && req.cookies.adminToken;
+  return !!(COOKIE_SECRET && token && token === makeAdminToken());
+}
+
+// Middleware: protect API routes — returns 401 JSON if not authenticated
+function requireAdmin(req, res, next) {
+  if (isAdminAuthenticated(req)) return next();
+  return res.status(401).json({ error: 'Unauthorized.' });
+}
+
+// ── Security middleware ───────────────────────────────────────────────────────
+// Trust Railway's reverse proxy so rate limiting uses real client IPs
+app.set('trust proxy', 1);
+
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc:  ["'self'"],
+      scriptSrc:   ["'self'", "'unsafe-inline'"],
+      styleSrc:    ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc:     ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc:      ["'self'", 'data:'],
+      connectSrc:  ["'self'"],
+      frameAncestors: ["'none'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false, // allow Google Fonts to load
+}));
+
+app.use(cookieParser());
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ── GET /admin — password-protected admin dashboard ──────────────────────────
-app.get('/admin', (req, res) => {
-  if (!ADMIN_PASSWORD) {
-    return res.status(500).send('ADMIN_PASSWORD environment variable is not set.');
-  }
-  if (req.query.pw !== ADMIN_PASSWORD) {
-    // Show a simple login form
-    return res.send(`<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Login — Pelotonia</title>
-  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Barlow:wght@400;500&display=swap" rel="stylesheet" />
-  <style>
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Barlow',Arial,sans-serif;background:#1e1e1e;min-height:100vh;display:flex;align-items:center;justify-content:center;}
-    .card{background:#fff;border-radius:4px;padding:2.5rem 2rem;width:100%;max-width:360px;box-shadow:0 12px 32px rgba(0,0,0,.4);}
-    .arrow{color:#44D62C;font-family:'Barlow Condensed',Arial,sans-serif;font-weight:800;font-size:1.5rem;}
-    h1{font-family:'Barlow Condensed',Arial,sans-serif;font-weight:800;font-size:1.4rem;letter-spacing:.04em;text-transform:uppercase;margin:.5rem 0 1.5rem;}
-    label{display:block;font-size:.78rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#757575;margin-bottom:.4rem;font-family:'Barlow Condensed',Arial,sans-serif;}
-    input{width:100%;border:1.5px solid #e0e0e0;border-radius:4px;padding:.65rem .85rem;font-size:.95rem;font-family:'Barlow',Arial,sans-serif;margin-bottom:1.25rem;}
-    input:focus{outline:none;border-color:#44D62C;box-shadow:0 0 0 3px rgba(68,214,44,.15);}
-    button{width:100%;font-family:'Barlow Condensed',Arial,sans-serif;font-weight:700;font-size:1rem;letter-spacing:.08em;text-transform:uppercase;background:#44D62C;color:#000;border:none;border-radius:9999px;padding:.7rem;cursor:pointer;}
-    button:hover{background:#35b020;}
-    .err{color:#d32f2f;font-size:.85rem;margin-bottom:1rem;}
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="arrow">→</div>
-    <h1>Admin Login</h1>
-    ${req.query.pw !== undefined ? '<p class="err">Incorrect password. Try again.</p>' : ''}
-    <form method="GET" action="/admin">
-      <label for="pw">Password</label>
-      <input type="password" id="pw" name="pw" placeholder="Enter admin password" autofocus />
-      <button type="submit">Sign In</button>
-    </form>
-  </div>
-</body>
-</html>`);
-  }
-  // Correct password — serve the admin dashboard
-  res.sendFile(path.join(__dirname, 'views', 'admin.html'));
+// ── Rate limiters ─────────────────────────────────────────────────────────────
+// Strict limit on registration submissions to prevent slot flooding
+const registerLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,  // 15 minutes
+  max: 5,
+  message: { error: 'Too many registration attempts. Please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders:   false,
 });
 
-// ── GET /api/slots — slot info with live counts ──────────────────────────────
+// Strict limit on admin login to prevent brute-force
+const adminLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders:   false,
+  handler: (req, res) => res.redirect('/admin?error=locked'),
+});
+
+// General API backstop
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,  // 1 minute
+  max: 60,
+  message: { error: 'Too many requests. Please slow down.' },
+  standardHeaders: true,
+  legacyHeaders:   false,
+});
+
+app.use('/api/', apiLimiter);
+
+// ── Admin routes ──────────────────────────────────────────────────────────────
+
+// GET /admin — serve dashboard if authenticated, otherwise serve login page
+app.get('/admin', (req, res) => {
+  if (isAdminAuthenticated(req)) {
+    return res.sendFile(path.join(__dirname, 'views', 'admin.html'));
+  }
+  res.sendFile(path.join(__dirname, 'views', 'login.html'));
+});
+
+// POST /admin — process login form (password in POST body, never in URL)
+app.post('/admin', adminLoginLimiter, (req, res) => {
+  if (!ADMIN_PASSWORD || !COOKIE_SECRET) {
+    return res.status(500).send('Server misconfiguration: ADMIN_PASSWORD and COOKIE_SECRET must be set.');
+  }
+  const submitted = (req.body.pw || '').trim();
+  if (submitted === ADMIN_PASSWORD) {
+    res.cookie('adminToken', makeAdminToken(), {
+      httpOnly: true,                                  // not accessible from JS
+      secure:   process.env.NODE_ENV !== 'development', // HTTPS only in production
+      sameSite: 'strict',                              // CSRF protection
+      maxAge:   8 * 60 * 60 * 1000,                  // 8-hour session
+      path:     '/',
+    });
+    return res.redirect('/admin');
+  }
+  res.redirect('/admin?error=1');
+});
+
+// POST /admin/logout — clear the session cookie
+app.post('/admin/logout', (req, res) => {
+  res.clearCookie('adminToken', { path: '/' });
+  res.redirect('/admin');
+});
+
+// ── GET /api/slots — slot info with live counts ───────────────────────────────
 app.get('/api/slots', async (req, res) => {
   try {
-    // Count registrations per slot in one query
     const { data, error } = await supabase
       .from('registrations')
       .select('slot_id');
@@ -105,27 +180,46 @@ app.get('/api/slots', async (req, res) => {
   }
 });
 
-// ── POST /api/register — submit a registration ───────────────────────────────
-app.post('/api/register', async (req, res) => {
+// ── POST /api/register — submit a registration ────────────────────────────────
+app.post('/api/register', registerLimiter, async (req, res) => {
   const { slotId, fname, lname, email, phone, ecName, ecPhone, questions, waiverAccepted } = req.body;
 
-  // Validate inputs
+  // ── Required field checks ──
   if (!slotId || !fname || !lname || !email || !phone || !ecName || !ecPhone) {
     return res.status(400).json({ error: 'Missing required fields.' });
   }
   if (!waiverAccepted) {
     return res.status(400).json({ error: 'Waiver must be accepted to register.' });
   }
+
+  // ── Length validation ──
+  const fieldValues = { fname, lname, email, phone, ecName, ecPhone, questions: questions || '' };
+  for (const [field, maxLen] of Object.entries(FIELD_LIMITS)) {
+    if ((fieldValues[field] || '').length > maxLen) {
+      return res.status(400).json({ error: `${field} is too long (max ${maxLen} characters).` });
+    }
+  }
+
+  // ── Format validation ──
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return res.status(400).json({ error: 'Invalid email address.' });
   }
+  const phonePattern = /^[\d\s()\-+.]+$/;
+  if (!phonePattern.test(phone)) {
+    return res.status(400).json({ error: 'Invalid phone number format.' });
+  }
+  if (!phonePattern.test(ecPhone)) {
+    return res.status(400).json({ error: 'Invalid emergency contact phone format.' });
+  }
+
+  // ── Valid slot check ──
   const slot = SLOTS.find(s => s.id === slotId);
   if (!slot) {
     return res.status(400).json({ error: 'Invalid session selected.' });
   }
 
   try {
-    // Check current count for capacity enforcement
+    // ── Capacity check (also enforced at DB level via trigger) ──
     const { count: slotCount, error: countErr } = await supabase
       .from('registrations')
       .select('*', { count: 'exact', head: true })
@@ -137,7 +231,7 @@ app.post('/api/register', async (req, res) => {
       return res.status(409).json({ error: 'This session is full.' });
     }
 
-    // Check for duplicate email in the same slot
+    // ── Duplicate email check ──
     const { data: existing, error: dupErr } = await supabase
       .from('registrations')
       .select('id')
@@ -151,25 +245,33 @@ app.post('/api/register', async (req, res) => {
       return res.status(409).json({ error: 'This email is already registered for that session.' });
     }
 
-    // Insert new registration
+    // ── Insert ──
     const { data: newReg, error: insertErr } = await supabase
       .from('registrations')
       .insert({
-        slot_id:          slotId,
-        slot_label:       `${slot.date} at ${slot.time}`,
-        fname:            fname.trim(),
-        lname:            lname.trim(),
-        email:            email.trim().toLowerCase(),
-        phone:            phone.trim(),
-        ec_name:          ecName.trim(),
-        ec_phone:         ecPhone.trim(),
-        questions:        (questions || '').trim(),
-        waiver_accepted:  true,
+        slot_id:           slotId,
+        slot_label:        `${slot.date} at ${slot.time}`,
+        fname:             fname.trim(),
+        lname:             lname.trim(),
+        email:             email.trim().toLowerCase(),
+        phone:             phone.trim(),
+        ec_name:           ecName.trim(),
+        ec_phone:          ecPhone.trim(),
+        questions:         (questions || '').trim(),
+        waiver_accepted:   true,
+        waiver_accepted_at: new Date().toISOString(),
+        waiver_version:    WAIVER_VERSION,
       })
       .select()
       .single();
 
-    if (insertErr) throw insertErr;
+    if (insertErr) {
+      // DB-level capacity trigger raises P0001
+      if (insertErr.code === 'P0001') {
+        return res.status(409).json({ error: 'This session is full.' });
+      }
+      throw insertErr;
+    }
 
     res.status(201).json({ success: true, registration: toPublic(newReg) });
   } catch (err) {
@@ -178,8 +280,8 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// ── GET /api/registrations — admin: all registrations (optional ?slotId=) ───
-app.get('/api/registrations', async (req, res) => {
+// ── GET /api/registrations — admin only ───────────────────────────────────────
+app.get('/api/registrations', requireAdmin, async (req, res) => {
   try {
     let query = supabase
       .from('registrations')
@@ -200,9 +302,13 @@ app.get('/api/registrations', async (req, res) => {
   }
 });
 
-// ── DELETE /api/registrations/:id — admin: remove a registration ─────────────
-app.delete('/api/registrations/:id', async (req, res) => {
-  const id = req.params.id;   // UUID from Supabase
+// ── DELETE /api/registrations/:id — admin only ────────────────────────────────
+app.delete('/api/registrations/:id', requireAdmin, async (req, res) => {
+  const id = req.params.id;
+  // Basic UUID format check to reject obviously malformed IDs
+  if (!/^[0-9a-f-]{36}$/.test(id)) {
+    return res.status(400).json({ error: 'Invalid registration ID.' });
+  }
   try {
     const { error } = await supabase
       .from('registrations')
@@ -218,21 +324,23 @@ app.delete('/api/registrations/:id', async (req, res) => {
   }
 });
 
-// ── Helper: map snake_case DB columns → camelCase for the frontend ────────────
+// ── Helper ────────────────────────────────────────────────────────────────────
 function toPublic(r) {
   return {
-    id:             r.id,
-    slotId:         r.slot_id,
-    slotLabel:      r.slot_label,
-    fname:          r.fname,
-    lname:          r.lname,
-    email:          r.email,
-    phone:          r.phone,
-    ecName:         r.ec_name,
-    ecPhone:        r.ec_phone,
-    questions:      r.questions,
-    waiverAccepted: r.waiver_accepted,
-    registeredAt:   r.registered_at,
+    id:               r.id,
+    slotId:           r.slot_id,
+    slotLabel:        r.slot_label,
+    fname:            r.fname,
+    lname:            r.lname,
+    email:            r.email,
+    phone:            r.phone,
+    ecName:           r.ec_name,
+    ecPhone:          r.ec_phone,
+    questions:        r.questions,
+    waiverAccepted:   r.waiver_accepted,
+    waiverAcceptedAt: r.waiver_accepted_at,
+    waiverVersion:    r.waiver_version,
+    registeredAt:     r.registered_at,
   };
 }
 

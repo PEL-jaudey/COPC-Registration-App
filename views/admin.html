@@ -66,6 +66,22 @@
       padding: .25rem .75rem;
       border-radius: 9999px;
     }
+    .header-right { display: flex; align-items: center; gap: .75rem; }
+    .logout-btn {
+      font-family: 'Barlow Condensed', Arial, sans-serif;
+      font-weight: 700;
+      font-size: .75rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      background: transparent;
+      color: rgba(255,255,255,.55);
+      border: 1.5px solid rgba(255,255,255,.2);
+      padding: .25rem .85rem;
+      border-radius: 9999px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .logout-btn:hover { color: var(--white); border-color: rgba(255,255,255,.5); }
 
     /* ── Summary cards ── */
     main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.25rem; }
@@ -247,7 +263,12 @@
     <span class="logo-arrow">→</span>
     <span class="logo-text">Pelotonia</span>
   </a>
-  <span class="header-badge">Admin Dashboard</span>
+  <div class="header-right">
+    <span class="header-badge">Admin Dashboard</span>
+    <form method="POST" action="/admin/logout" style="margin:0">
+      <button type="submit" class="logout-btn">Sign Out</button>
+    </form>
+  </div>
 </header>
 
 <main>
@@ -353,17 +374,20 @@
       { id: 'all', label: 'All Sessions' },
       ...slots.map(s => ({ id: s.id, label: s.date })),
     ];
-    container.innerHTML = options.map(opt => `
-      <button class="filter-btn ${activeFilter === opt.id ? 'active' : ''}"
-              onclick="setFilter('${opt.id}')">${opt.label}</button>
-    `).join('');
+    container.innerHTML = '';
+    options.forEach(opt => {
+      const btn = document.createElement('button');
+      btn.className = 'filter-btn' + (activeFilter === opt.id ? ' active' : '');
+      btn.textContent = opt.label;
+      btn.dataset.filterId = opt.id;
+      container.appendChild(btn);
+    });
+    // Attach listeners via event delegation — no inline JS
+    container.addEventListener('click', e => {
+      const btn = e.target.closest('[data-filter-id]');
+      if (btn) { activeFilter = btn.dataset.filterId; renderFilters(); renderTable(); }
+    }, { once: true });
   }
-
-  window.setFilter = function(id) {
-    activeFilter = id;
-    renderFilters();
-    renderTable();
-  };
 
   // ── Registration table ──
   function renderTable() {
@@ -373,7 +397,7 @@
       : allRegs.filter(r => r.slotId === activeFilter);
 
     if (regs.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No registrations yet.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10" class="empty-state">No registrations yet.</td></tr>`;
       return;
     }
 
@@ -388,22 +412,24 @@
         <td>${esc(r.slotLabel)}</td>
         <td>${r.questions ? esc(r.questions) : '<span style="color:var(--muted)">—</span>'}</td>
         <td style="white-space:nowrap">${new Date(r.registeredAt).toLocaleString()}</td>
-        <td><button class="btn btn-danger btn-sm" onclick="deleteReg('${r.id}')">Remove</button></td>
+        <td><button class="btn btn-danger btn-sm" data-delete-id="${r.id}">Remove</button></td>
       </tr>
     `).join('');
   }
 
-  // ── Delete ──
-  window.deleteReg = async function(id) {
+  // ── Delete via event delegation (no inline onclick) ──
+  document.getElementById('regTableBody').addEventListener('click', async e => {
+    const btn = e.target.closest('[data-delete-id]');
+    if (!btn) return;
     if (!confirm('Remove this registration? This cannot be undone.')) return;
     try {
-      await api('DELETE', `/api/registrations/${id}`);
+      await api('DELETE', `/api/registrations/${btn.dataset.deleteId}`);
       showToast('Registration removed.', 'success');
       await loadAll();
-    } catch(e) {
-      showToast(e.message, 'error');
+    } catch(err) {
+      showToast(err.message, 'error');
     }
-  };
+  });
 
   // ── CSV Export ──
   document.getElementById('exportBtn').addEventListener('click', () => {
