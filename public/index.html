@@ -487,7 +487,7 @@
   <div class="hero">
     <div class="hero-label">→ New Rider Clinic 2026</div>
     <h1>Register.<br>Ride. Change Lives.</h1>
-    <p>Select a session and complete your registration below.</p>
+    <p>Register for the COPC New Rider Clinic presented for the Pelotonia Community by teamCOPC and Friends.<br>Sessions are held at noon at the Rocky Fork Metro Park at 7180 Walnut St, New Albany, OH 43054.<br>Please select a session below and complete your registration.</p>
   </div>
 </header>
 
@@ -519,6 +519,10 @@
         <label for="phone">Phone Number <span style="color:var(--danger)">*</span></label>
         <input type="tel" id="phone" placeholder="(614) 555-0100" required autocomplete="tel" />
       </div>
+      <div class="field">
+        <label for="address">Home Address <span style="color:var(--danger)">*</span></label>
+        <input type="text" id="address" placeholder="123 Main St, Columbus, OH 43215" required autocomplete="street-address" />
+      </div>
       <div class="form-row">
         <div class="field">
           <label for="ecName">Emergency Contact Name <span style="color:var(--danger)">*</span></label>
@@ -530,8 +534,8 @@
         </div>
       </div>
       <div class="field">
-        <label for="questions">Cycling Questions or Concerns</label>
-        <textarea id="questions" placeholder="Optional — share any questions or concerns you'd like addressed at the session."></textarea>
+        <label for="questions">Any Additional Comments</label>
+        <textarea id="questions" placeholder="Optional — share any comments, questions, or concerns you'd like addressed at the session."></textarea>
       </div>
       <div class="form-footer">
         <button type="submit" class="btn btn-primary" id="submitBtn" disabled>Review Waiver &amp; Register</button>
@@ -655,6 +659,7 @@
     const lname     = document.getElementById('lname').value.trim();
     const email     = document.getElementById('email').value.trim();
     const phone     = document.getElementById('phone').value.trim();
+    const address   = document.getElementById('address').value.trim();
     const ecName    = document.getElementById('ecName').value.trim();
     const ecPhone   = document.getElementById('ecPhone').value.trim();
     const questions = document.getElementById('questions').value.trim();
@@ -663,11 +668,12 @@
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       showToast('Please enter a valid email address.', 'error'); return;
     }
-    if (!phone) { showToast('Please enter your phone number.', 'error'); return; }
+    if (!phone)   { showToast('Please enter your phone number.', 'error'); return; }
+    if (!address) { showToast('Please enter your home address.', 'error'); return; }
     if (!ecName)  { showToast('Please enter an emergency contact name.', 'error'); return; }
     if (!ecPhone) { showToast('Please enter an emergency contact phone number.', 'error'); return; }
 
-    pendingPayload = { slotId: selectedSlot, fname, lname, email, phone, ecName, ecPhone, questions };
+    pendingPayload = { slotId: selectedSlot, fname, lname, email, phone, address, ecName, ecPhone, questions };
     openWaiver();
   });
 

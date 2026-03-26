@@ -293,10 +293,11 @@
           <th>Name</th>
           <th>Email</th>
           <th>Phone</th>
+          <th>Address</th>
           <th>Emergency Contact</th>
           <th>EC Phone</th>
           <th>Session</th>
-          <th>Questions / Concerns</th>
+          <th>Comments</th>
           <th>Registered At</th>
           <th></th>
         </tr>
@@ -397,7 +398,7 @@
       : allRegs.filter(r => r.slotId === activeFilter);
 
     if (regs.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="10" class="empty-state">No registrations yet.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="11" class="empty-state">No registrations yet.</td></tr>`;
       return;
     }
 
@@ -407,6 +408,7 @@
         <td>${esc(r.fname)} ${esc(r.lname)}</td>
         <td>${esc(r.email)}</td>
         <td style="white-space:nowrap">${esc(r.phone || '—')}</td>
+        <td>${esc(r.address || '—')}</td>
         <td>${esc(r.ecName || '—')}</td>
         <td style="white-space:nowrap">${esc(r.ecPhone || '—')}</td>
         <td>${esc(r.slotLabel)}</td>
@@ -439,10 +441,11 @@
 
     if (regs.length === 0) { showToast('No registrations to export.', 'error'); return; }
 
-    const header = ['First Name','Last Name','Email','Phone','Emergency Contact','EC Phone','Session','Questions/Concerns','Waiver Accepted','Registered At'];
+    const header = ['First Name','Last Name','Email','Phone','Address','Emergency Contact','EC Phone','Session','Additional Comments','Waiver Accepted','Registered At'];
     const rows = regs.map(r => [
       r.fname, r.lname, r.email,
       r.phone || '',
+      r.address || '',
       r.ecName || '',
       r.ecPhone || '',
       r.slotLabel,

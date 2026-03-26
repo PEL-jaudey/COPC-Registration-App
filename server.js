@@ -34,6 +34,7 @@ const FIELD_LIMITS = {
   lname:     100,
   email:     254,
   phone:      30,
+  address:   255,
   ecName:    100,
   ecPhone:    30,
   questions: 2000,
@@ -182,10 +183,10 @@ app.get('/api/slots', async (req, res) => {
 
 // ── POST /api/register — submit a registration ────────────────────────────────
 app.post('/api/register', registerLimiter, async (req, res) => {
-  const { slotId, fname, lname, email, phone, ecName, ecPhone, questions, waiverAccepted } = req.body;
+  const { slotId, fname, lname, email, phone, address, ecName, ecPhone, questions, waiverAccepted } = req.body;
 
   // ── Required field checks ──
-  if (!slotId || !fname || !lname || !email || !phone || !ecName || !ecPhone) {
+  if (!slotId || !fname || !lname || !email || !phone || !address || !ecName || !ecPhone) {
     return res.status(400).json({ error: 'Missing required fields.' });
   }
   if (!waiverAccepted) {
@@ -193,7 +194,7 @@ app.post('/api/register', registerLimiter, async (req, res) => {
   }
 
   // ── Length validation ──
-  const fieldValues = { fname, lname, email, phone, ecName, ecPhone, questions: questions || '' };
+  const fieldValues = { fname, lname, email, phone, address, ecName, ecPhone, questions: questions || '' };
   for (const [field, maxLen] of Object.entries(FIELD_LIMITS)) {
     if ((fieldValues[field] || '').length > maxLen) {
       return res.status(400).json({ error: `${field} is too long (max ${maxLen} characters).` });
@@ -255,6 +256,7 @@ app.post('/api/register', registerLimiter, async (req, res) => {
         lname:             lname.trim(),
         email:             email.trim().toLowerCase(),
         phone:             phone.trim(),
+        address:           address.trim(),
         ec_name:           ecName.trim(),
         ec_phone:          ecPhone.trim(),
         questions:         (questions || '').trim(),
@@ -334,6 +336,7 @@ function toPublic(r) {
     lname:            r.lname,
     email:            r.email,
     phone:            r.phone,
+    address:          r.address,
     ecName:           r.ec_name,
     ecPhone:          r.ec_phone,
     questions:        r.questions,
