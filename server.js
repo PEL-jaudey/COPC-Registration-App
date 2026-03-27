@@ -16,16 +16,15 @@ const supabase = createClient(
 // ── Config ────────────────────────────────────────────────────────────────────
 const app            = express();
 const PORT           = process.env.PORT || 3000;
-const MAX_CAPACITY   = 75;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const COOKIE_SECRET  = process.env.COOKIE_SECRET;
 const WAIVER_VERSION = '2026-v1';
 
 const SLOTS = [
-  { id: 'slot1', date: 'May 15, 2026',  time: '12:00 PM' },
-  { id: 'slot2', date: 'May 30, 2026',  time: '12:00 PM' },
-  { id: 'slot3', date: 'June 13, 2026', time: '12:00 PM' },
-  { id: 'slot4', date: 'June 27, 2026', time: '12:00 PM' },
+  { id: 'slot1', date: 'May 15, 2026',  time: '12:00 PM', capacity: 50  },
+  { id: 'slot2', date: 'May 30, 2026',  time: '12:00 PM', capacity: 100 },
+  { id: 'slot3', date: 'June 13, 2026', time: '12:00 PM', capacity: 100 },
+  { id: 'slot4', date: 'June 27, 2026', time: '12:00 PM', capacity: 100 },
 ];
 
 // Field length limits
@@ -168,9 +167,8 @@ app.get('/api/slots', async (req, res) => {
       return {
         ...slot,
         registered: count,
-        capacity:   MAX_CAPACITY,
-        remaining:  MAX_CAPACITY - count,
-        full:       count >= MAX_CAPACITY,
+        remaining:  slot.capacity - count,
+        full:       count >= slot.capacity,
       };
     });
 
@@ -228,7 +226,7 @@ app.post('/api/register', registerLimiter, async (req, res) => {
 
     if (countErr) throw countErr;
 
-    if (slotCount >= MAX_CAPACITY) {
+    if (slotCount >= slot.capacity) {
       return res.status(409).json({ error: 'This session is full.' });
     }
 

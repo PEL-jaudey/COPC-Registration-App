@@ -349,13 +349,13 @@
   function renderSummary() {
     const total = allRegs.length;
     const grid  = document.getElementById('summaryGrid');
-    const totalCapacity = slots.length * 75;
+    const totalCapacity = slots.reduce((sum, s) => sum + s.capacity, 0);
 
     const cards = [
       { label: 'Total Registered', count: total, sub: `of ${totalCapacity} total spots`, cls: 'total' },
       ...slots.map(s => {
         const count = allRegs.filter(r => r.slotId === s.id).length;
-        return { label: s.date, count, sub: `${75 - count} spots remaining` };
+        return { label: s.date, count, sub: `${s.capacity - count} spots remaining` };
       }),
     ];
 
