@@ -141,6 +141,38 @@
       background: var(--border);
     }
 
+    /* ── What to Expect ── */
+    .what-to-expect { margin-bottom: 2rem; }
+    .expect-list {
+      list-style: none;
+      display: flex;
+      flex-direction: row;
+      gap: 1rem;
+    }
+    @media (max-width: 600px) { .expect-list { flex-direction: column; } }
+    .expect-list li {
+      flex: 1;
+      display: flex;
+      align-items: flex-start;
+      gap: .6rem;
+      font-size: .92rem;
+      color: #ffffff;
+      font-weight: 500;
+      background: #00471f;
+      border: none;
+      border-radius: 12px;
+      padding: 1rem 1.1rem;
+      box-shadow: var(--shadow);
+    }
+    .expect-arrow {
+      color: var(--green);
+      font-family: 'Barlow Condensed', Arial, sans-serif;
+      font-weight: 800;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
     /* ── Slot cards ── */
     .slots-grid {
       display: grid;
@@ -487,12 +519,21 @@
   <div class="hero">
     <div class="hero-label">→ New Rider Clinic 2026</div>
     <h1>Register.<br>Ride. Change Lives.</h1>
-    <p>Register for the COPC New Rider Clinic presented for the Pelotonia Community by teamCOPC and Friends.<br>Sessions are held at noon at the Rocky Fork Metro Park at 7180 Walnut St, New Albany, OH 43054.<br>Please select a session below and complete your registration.</p>
+    <p>Register for the New Rider Clinic presented for the Pelotonia Community by teamCOPC and Friends.<br>Sessions are held at noon at the Rocky Fork Metro Park at 7180 Walnut St, New Albany, OH 43054.<br>Please select a session below and complete your registration.</p>
     <p style="margin-top:.9rem;font-style:italic;font-size:.88rem;color:rgba(255,255,255,.55);max-width:640px;margin-left:auto;margin-right:auto;">Your address and contact information will be shared only with Columbus Outdoor Pursuits for the purpose of providing insurance coverage, and you may receive future communications directly from them.</p>
   </div>
 </header>
 
 <main>
+  <div class="what-to-expect">
+    <div class="section-label">What to Expect</div>
+    <ul class="expect-list">
+      <li><span class="expect-arrow">→</span>Educate new Pelotonia Riders about safe cycling practices &amp; laws</li>
+      <li><span class="expect-arrow">→</span>Provide an opportunity to learn on a supported group ride</li>
+      <li><span class="expect-arrow">→</span>Give new Riders comfort and confidence as they prepare for the ride</li>
+    </ul>
+  </div>
+
   <div class="section-label">Available Sessions</div>
   <div class="slots-grid" id="slotsGrid">
     <div class="empty-state" style="grid-column:1/-1">Loading sessions…</div>
@@ -559,7 +600,7 @@
       <p>Please read the full agreement before registering.</p>
     </div>
     <div class="modal-body" id="waiverBody">
-      <p><strong>Columbus Outdoor Pursuits, Inc. Liability Release &amp; Waiver, Publicity/Photo Release, Indemnification Agreement, Medical Treatment Permission and Jurisdiction Agreement</strong> (the "Agreement") for the Pelotonia New Rider Clinic on May 15, 2026, or May 30, 2026, or June 13, 2026, or June 27, 2026.</p>
+      <p><strong>Columbus Outdoor Pursuits, Inc. Liability Release &amp; Waiver, Publicity/Photo Release, Indemnification Agreement, Medical Treatment Permission and Jurisdiction Agreement</strong> (the "Agreement") for the Pelotonia New Rider Clinic on May 16, 2026, or May 30, 2026, or June 13, 2026, or June 27, 2026.</p>
 
       <p><strong>Read Before Signing</strong></p>
 

@@ -21,7 +21,7 @@ const COOKIE_SECRET  = process.env.COOKIE_SECRET;
 const WAIVER_VERSION = '2026-v1';
 
 const SLOTS = [
-  { id: 'slot1', date: 'May 15, 2026',  time: '12:00 PM', capacity: 50  },
+  { id: 'slot1', date: 'May 16, 2026',  time: '12:00 PM', capacity: 50  },
   { id: 'slot2', date: 'May 30, 2026',  time: '12:00 PM', capacity: 100 },
   { id: 'slot3', date: 'June 13, 2026', time: '12:00 PM', capacity: 100 },
   { id: 'slot4', date: 'June 27, 2026', time: '12:00 PM', capacity: 100 },
