@@ -161,16 +161,6 @@
     <a class="back-link" href="/">← Back to registration</a>
   </div>
 
-  <script>
-    // Safely read the ?error param and show a canned message — never reflect it
-    const params = new URLSearchParams(window.location.search);
-    const error  = params.get('error');
-    const container = document.getElementById('errorContainer');
-    if (error === 'locked') {
-      container.innerHTML = '<div class="locked-msg">Too many login attempts. Please wait 15 minutes and try again.</div>';
-    } else if (error) {
-      container.innerHTML = '<div class="error-msg">Incorrect password. Please try again.</div>';
-    }
-  </script>
+  <script src="/js/login.js"></script>
 </body>
 </html>
