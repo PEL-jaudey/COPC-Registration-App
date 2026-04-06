@@ -5,6 +5,7 @@ const crypto       = require('crypto');
 const helmet       = require('helmet');
 const rateLimit    = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
+const nodemailer   = require('nodemailer');
 const { createClient } = require('@supabase/supabase-js');
 
 // ── Supabase ──────────────────────────────────────────────────────────────────
@@ -19,6 +20,106 @@ const PORT           = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const COOKIE_SECRET  = process.env.COOKIE_SECRET;
 const WAIVER_VERSION = '2026-v1';
+
+// ── Email transporter ─────────────────────────────────────────────────────────
+const mailer = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_FROM,
+    pass: process.env.EMAIL_PASSWORD,   // Gmail App Password (16-char code)
+  },
+});
+
+async function sendConfirmation({ fname, lname, email, slotDate, slotTime }) {
+  if (!process.env.EMAIL_FROM || !process.env.EMAIL_PASSWORD) return; // skip if not configured
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:4px;overflow:hidden;">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:#1e1e1e;padding:28px 32px;">
+            <span style="color:#44D62C;font-size:1.4rem;font-weight:900;font-family:Arial,sans-serif;">→</span>
+            <span style="color:#ffffff;font-size:1.2rem;font-weight:900;font-family:Arial,sans-serif;letter-spacing:3px;text-transform:uppercase;margin-left:6px;">PELOTONIA</span>
+          </td>
+        </tr>
+
+        <!-- Green accent bar -->
+        <tr><td style="background:#44D62C;height:4px;"></td></tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:36px 32px 28px;">
+            <h1 style="margin:0 0 8px;font-size:1.5rem;font-weight:900;text-transform:uppercase;letter-spacing:1px;color:#1e1e1e;">
+              You're Registered!
+            </h1>
+            <p style="margin:0 0 24px;font-size:1rem;color:#757575;">
+              New Rider Clinic — Confirmation
+            </p>
+
+            <p style="margin:0 0 20px;font-size:1rem;color:#3b3b3b;line-height:1.6;">
+              Hi ${fname},<br><br>
+              Thank you for registering for the <strong>New Rider Clinic</strong> presented for the Pelotonia Community by teamCOPC and Friends. We're excited to have you join us!
+            </p>
+
+            <!-- Session details box -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;border-left:4px solid #44D62C;border-radius:0 4px 4px 0;margin-bottom:24px;">
+              <tr>
+                <td style="padding:20px 24px;">
+                  <p style="margin:0 0 6px;font-size:.72rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#757575;">Your Session</p>
+                  <p style="margin:0 0 4px;font-size:1.2rem;font-weight:900;color:#1e1e1e;">${slotDate}</p>
+                  <p style="margin:0 0 16px;font-size:1rem;color:#3b3b3b;">${slotTime}</p>
+                  <p style="margin:0 0 4px;font-size:.72rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#757575;">Location</p>
+                  <p style="margin:0;font-size:.95rem;color:#3b3b3b;">Rocky Fork Metro Park<br>7180 Walnut St, New Albany, OH 43054</p>
+                </td>
+              </tr>
+            </table>
+
+            <!-- What to Expect -->
+            <p style="margin:0 0 10px;font-size:.72rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#757575;">What to Expect</p>
+            <ul style="margin:0 0 24px;padding-left:20px;color:#3b3b3b;font-size:.95rem;line-height:1.8;">
+              <li>Learn about safe cycling practices &amp; laws</li>
+              <li>Ride together on a supported group ride</li>
+              <li>Build comfort and confidence before the big ride</li>
+            </ul>
+
+            <p style="margin:0;font-size:.9rem;color:#757575;line-height:1.6;font-style:italic;">
+              Your address and contact information will be shared only with Columbus Outdoor Pursuits for the purpose of providing insurance coverage.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#1e1e1e;padding:20px 32px;text-align:center;">
+            <p style="margin:0;font-size:.78rem;color:rgba(255,255,255,.4);letter-spacing:1px;text-transform:uppercase;">
+              &copy; 2026 <span style="color:#44D62C;">Pelotonia</span> &mdash; Ending Cancer, One Ride at a Time
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  await mailer.sendMail({
+    from:    `"New Rider Clinic" <${process.env.EMAIL_FROM}>`,
+    to:      email,
+    subject: 'Thank you for registering for the New Rider Clinic!',
+    html,
+  });
+}
 
 const SLOTS = [
   { id: 'slot1', date: 'May 16, 2026',  time: '12:00 PM', capacity: 50  },
@@ -273,7 +374,17 @@ app.post('/api/register', registerLimiter, async (req, res) => {
       throw insertErr;
     }
 
+    // ── Respond immediately, then send confirmation email ──
     res.status(201).json({ success: true, registration: toPublic(newReg) });
+
+    sendConfirmation({
+      fname:     fname.trim(),
+      lname:     lname.trim(),
+      email:     email.trim().toLowerCase(),
+      slotDate:  slot.date,
+      slotTime:  slot.time,
+    }).catch(err => console.error('Confirmation email failed:', err.message));
+
   } catch (err) {
     console.error('POST /api/register error:', err.message);
     res.status(500).json({ error: 'Registration failed. Please try again.' });
