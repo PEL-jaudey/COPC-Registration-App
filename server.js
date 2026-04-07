@@ -35,10 +35,8 @@ const COOKIE_SECRET  = process.env.COOKIE_SECRET;
 const WAIVER_VERSION = '2026-v1';
 
 // ── Email ─────────────────────────────────────────────────────────────────────
-// Railway containers cannot route IPv6. We pre-resolve smtp.gmail.com to an
-// IPv4 address using dns.lookup({ family:4 }) and connect to that IP directly,
-// while still passing servername:'smtp.gmail.com' so TLS cert validation works.
-const dnsLookup = require('dns').promises.lookup;
+// Uses Gmail API via OAuth2 (HTTPS) instead of SMTP — Railway blocks outbound
+// SMTP ports but HTTPS (port 443) works fine.
 
 // HTML-escape helper for email template — prevents HTML injection from user input
 function escHtml(s) {
@@ -49,22 +47,17 @@ function escHtml(s) {
 }
 
 async function sendConfirmation({ fname, lname, email, slotDate, slotTime }) {
-  if (!process.env.EMAIL_FROM || !process.env.EMAIL_PASSWORD) return;
+  if (!process.env.EMAIL_FROM || !process.env.GMAIL_CLIENT_ID ||
+      !process.env.GMAIL_CLIENT_SECRET || !process.env.GMAIL_REFRESH_TOKEN) return;
 
-  // Resolve smtp.gmail.com to an IPv4 address explicitly — avoids ENETUNREACH
-  // on Railway where the container cannot route IPv6 outbound connections.
-  const { address: smtpIp } = await dnsLookup('smtp.gmail.com', { family: 4 });
   const mailer = nodemailer.createTransport({
-    host:    smtpIp,              // IPv4 address, e.g. 74.125.x.x
-    port:    465,
-    secure:  true,                // SSL on port 465
+    service: 'gmail',
     auth: {
-      user: process.env.EMAIL_FROM,
-      pass: process.env.EMAIL_PASSWORD,
-    },
-    tls: {
-      servername:         'smtp.gmail.com',  // validate cert against hostname, not IP
-      rejectUnauthorized: true,
+      type:         'OAuth2',
+      user:         process.env.EMAIL_FROM,
+      clientId:     process.env.GMAIL_CLIENT_ID,
+      clientSecret: process.env.GMAIL_CLIENT_SECRET,
+      refreshToken: process.env.GMAIL_REFRESH_TOKEN,
     },
   });
 
