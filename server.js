@@ -1,4 +1,9 @@
 require('dotenv').config();
+// Force IPv4 DNS resolution process-wide — Railway containers cannot route IPv6.
+// Must be called before any network activity (including module loads that connect).
+const dns = require('dns');
+dns.setDefaultResultOrder('ipv4first');
+
 const express      = require('express');
 const path         = require('path');
 const crypto       = require('crypto');
@@ -31,10 +36,7 @@ const WAIVER_VERSION = '2026-v1';
 
 // ── Email ─────────────────────────────────────────────────────────────────────
 const mailer = nodemailer.createTransport({
-  host:   'smtp.gmail.com',
-  port:   587,
-  secure: false,          // STARTTLS on port 587
-  family: 4,              // Force IPv4 — Railway containers can't route IPv6
+  service: 'gmail',
   auth: {
     user: process.env.EMAIL_FROM,
     pass: process.env.EMAIL_PASSWORD,  // Gmail App Password (16-char, no spaces)
