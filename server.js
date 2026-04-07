@@ -10,7 +10,7 @@ const crypto       = require('crypto');
 const helmet       = require('helmet');
 const rateLimit    = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
-const nodemailer   = require('nodemailer');
+const { google }   = require('googleapis');
 const { createClient } = require('@supabase/supabase-js');
 
 // ── Startup validation — fail loudly rather than silently ─────────────────────
@@ -35,8 +35,8 @@ const COOKIE_SECRET  = process.env.COOKIE_SECRET;
 const WAIVER_VERSION = '2026-v1';
 
 // ── Email ─────────────────────────────────────────────────────────────────────
-// Uses Gmail API via OAuth2 (HTTPS) instead of SMTP — Railway blocks outbound
-// SMTP ports but HTTPS (port 443) works fine.
+// Uses Gmail REST API via HTTPS (googleapis) — Railway blocks all outbound SMTP
+// ports (465, 587) but HTTPS port 443 works fine.
 
 // HTML-escape helper for email template — prevents HTML injection from user input
 function escHtml(s) {
@@ -50,16 +50,13 @@ async function sendConfirmation({ fname, lname, email, slotDate, slotTime }) {
   if (!process.env.EMAIL_FROM || !process.env.GMAIL_CLIENT_ID ||
       !process.env.GMAIL_CLIENT_SECRET || !process.env.GMAIL_REFRESH_TOKEN) return;
 
-  const mailer = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      type:         'OAuth2',
-      user:         process.env.EMAIL_FROM,
-      clientId:     process.env.GMAIL_CLIENT_ID,
-      clientSecret: process.env.GMAIL_CLIENT_SECRET,
-      refreshToken: process.env.GMAIL_REFRESH_TOKEN,
-    },
-  });
+  // Build OAuth2 client and Gmail API instance (pure HTTPS — no SMTP)
+  const auth = new google.auth.OAuth2(
+    process.env.GMAIL_CLIENT_ID,
+    process.env.GMAIL_CLIENT_SECRET
+  );
+  auth.setCredentials({ refresh_token: process.env.GMAIL_REFRESH_TOKEN });
+  const gmail = google.gmail({ version: 'v1', auth });
 
   const html = `
 <!DOCTYPE html>
@@ -111,16 +108,21 @@ async function sendConfirmation({ fname, lname, email, slotDate, slotTime }) {
 </body>
 </html>`;
 
-  try {
-    await mailer.sendMail({
-      from:    `"New Rider Clinic" <${process.env.EMAIL_FROM}>`,
-      to:      email,
-      subject: 'Thank you for registering for the New Rider Clinic!',
-      html,
-    });
-  } finally {
-    mailer.close();
-  }
+  // Build a RFC 2822 MIME message and base64url-encode it for the Gmail API
+  const mime = [
+    `From: "New Rider Clinic" <${process.env.EMAIL_FROM}>`,
+    `To: ${email}`,
+    'Subject: Thank you for registering for the New Rider Clinic!',
+    'MIME-Version: 1.0',
+    'Content-Type: text/html; charset=utf-8',
+    '',
+    html,
+  ].join('\r\n');
+
+  await gmail.users.messages.send({
+    userId:      'me',
+    requestBody: { raw: Buffer.from(mime).toString('base64url') },
+  });
 }
 
 // ── Slots ─────────────────────────────────────────────────────────────────────
