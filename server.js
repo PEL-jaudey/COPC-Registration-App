@@ -97,11 +97,6 @@ async function sendConfirmation({ fname, lname, email, slotDate, slotTime }) {
             Your address and contact information will be shared only with Columbus Outdoor Pursuits for the purpose of providing insurance coverage.
           </p>
         </td></tr>
-        <tr><td style="background:#1e1e1e;padding:20px 32px;text-align:center;">
-          <p style="margin:0;font-size:.78rem;color:rgba(255,255,255,.4);letter-spacing:1px;text-transform:uppercase;">
-            &copy; 2026 <span style="color:#44D62C;">Pelotonia</span> &mdash; Ending Cancer, One Ride at a Time
-          </p>
-        </td></tr>
       </table>
     </td></tr>
   </table>
