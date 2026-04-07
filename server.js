@@ -36,11 +36,15 @@ const WAIVER_VERSION = '2026-v1';
 
 // ── Email ─────────────────────────────────────────────────────────────────────
 const mailer = nodemailer.createTransport({
-  service: 'gmail',
+  host:    'smtp.gmail.com',
+  port:    587,
+  secure:  false,   // STARTTLS
+  // family:4 passed via NODE_OPTIONS=--dns-result-order=ipv4first in Railway env
   auth: {
     user: process.env.EMAIL_FROM,
     pass: process.env.EMAIL_PASSWORD,  // Gmail App Password (16-char, no spaces)
   },
+  tls: { rejectUnauthorized: true },
 });
 
 // HTML-escape helper for email template — prevents HTML injection from user input
