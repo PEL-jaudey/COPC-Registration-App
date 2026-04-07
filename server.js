@@ -56,8 +56,8 @@ async function sendConfirmation({ fname, lname, email, slotDate, slotTime }) {
   const { address: smtpIp } = await dnsLookup('smtp.gmail.com', { family: 4 });
   const mailer = nodemailer.createTransport({
     host:    smtpIp,              // IPv4 address, e.g. 74.125.x.x
-    port:    587,
-    secure:  false,               // STARTTLS
+    port:    465,
+    secure:  true,                // SSL on port 465
     auth: {
       user: process.env.EMAIL_FROM,
       pass: process.env.EMAIL_PASSWORD,
