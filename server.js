@@ -31,7 +31,10 @@ const WAIVER_VERSION = '2026-v1';
 
 // ── Email ─────────────────────────────────────────────────────────────────────
 const mailer = nodemailer.createTransport({
-  service: 'gmail',
+  host:   'smtp.gmail.com',
+  port:   587,
+  secure: false,          // STARTTLS on port 587
+  family: 4,              // Force IPv4 — Railway containers can't route IPv6
   auth: {
     user: process.env.EMAIL_FROM,
     pass: process.env.EMAIL_PASSWORD,  // Gmail App Password (16-char, no spaces)
