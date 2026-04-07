@@ -132,6 +132,23 @@
     }
   });
 
+  // ── Remove All ──
+  document.getElementById('removeAllBtn').addEventListener('click', async () => {
+    const regs = activeFilter === 'all'
+      ? allRegs
+      : allRegs.filter(r => r.slotId === activeFilter);
+    if (regs.length === 0) { showToast('No registrations to remove.', 'error'); return; }
+    const label = activeFilter === 'all' ? 'all' : 'this session\'s';
+    if (!confirm(`Remove ${label} ${regs.length} registration${regs.length !== 1 ? 's' : ''}? This cannot be undone.`)) return;
+    try {
+      await api('DELETE', '/api/registrations', { ids: regs.map(r => r.id) });
+      showToast(`${regs.length} registration${regs.length !== 1 ? 's' : ''} removed.`, 'success');
+      await loadAll();
+    } catch(err) {
+      showToast('Failed to remove registrations.', 'error');
+    }
+  });
+
   // ── CSV Export ──
   document.getElementById('exportBtn').addEventListener('click', () => {
     const regs = activeFilter === 'all'

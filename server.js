@@ -433,6 +433,28 @@ app.get('/api/registrations', requireAdmin, async (req, res) => {
   }
 });
 
+// ── DELETE /api/registrations — bulk delete, admin only ──────────────────────
+app.delete('/api/registrations', requireAdmin, async (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'No IDs provided.' });
+  }
+  if (!ids.every(id => /^[0-9a-f-]{36}$/.test(id))) {
+    return res.status(400).json({ error: 'Invalid registration ID.' });
+  }
+  try {
+    const { error } = await supabase
+      .from('registrations')
+      .delete()
+      .in('id', ids);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/registrations error:', err.message);
+    res.status(500).json({ error: 'Failed to remove registrations.' });
+  }
+});
+
 // ── DELETE /api/registrations/:id — admin only ────────────────────────────────
 app.delete('/api/registrations/:id', requireAdmin, async (req, res) => {
   const id = req.params.id;
