@@ -122,10 +122,10 @@ async function sendConfirmation({ fname, lname, email, slotDate, slotTime }) {
 
 // ── Slots ─────────────────────────────────────────────────────────────────────
 const SLOTS = [
-  { id: 'slot1', date: 'May 16, 2026',  time: '12:00 PM', capacity: 50  },
-  { id: 'slot2', date: 'May 30, 2026',  time: '12:00 PM', capacity: 100 },
-  { id: 'slot3', date: 'June 13, 2026', time: '12:00 PM', capacity: 100 },
-  { id: 'slot4', date: 'June 27, 2026', time: '12:00 PM', capacity: 35  },
+  { id: 'slot1', date: 'May 16, 2026',  time: '12:00 PM', capacity: 50,  completed: true  },
+  { id: 'slot2', date: 'May 30, 2026',  time: '12:00 PM', capacity: 100, completed: true  },
+  { id: 'slot3', date: 'June 13, 2026', time: '12:00 PM', capacity: 100, completed: true  },
+  { id: 'slot4', date: 'June 27, 2026', time: '12:00 PM', capacity: 35,  completed: false },
 ];
 
 // ── Field length limits ───────────────────────────────────────────────────────
@@ -333,6 +333,9 @@ app.post('/api/register', registerLimiter, async (req, res) => {
   const slot = SLOTS.find(s => s.id === slotId);
   if (!slot) {
     return res.status(400).json({ error: 'Invalid session selected.' });
+  }
+  if (slot.completed) {
+    return res.status(409).json({ error: 'This session has already taken place.' });
   }
 
   try {

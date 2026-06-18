@@ -36,16 +36,21 @@
     grid.innerHTML = '';
     slots.forEach(slot => {
       const card = document.createElement('div');
-      card.className = 'slot-card' + (slot.full ? ' full' : '') + (selectedSlot === slot.id ? ' selected' : '');
+      const isUnavailable = slot.completed || slot.full;
+      card.className = 'slot-card' + (slot.completed ? ' completed' : slot.full ? ' full' : '') + (selectedSlot === slot.id ? ' selected' : '');
       card.dataset.slotId = slot.id;
+      let badgeText;
+      if (slot.completed)     badgeText = 'Completed';
+      else if (slot.full)     badgeText = 'Full';
+      else                    badgeText = `${esc(String(slot.remaining))} spot${slot.remaining !== 1 ? 's' : ''} left`;
       card.innerHTML = `
         <div class="slot-arrow">&#8594;</div>
         <div class="slot-date">${esc(slot.date)}</div>
         <div class="slot-time">${esc(slot.time)}</div>
-        <div class="slot-badge">${slot.full ? 'Full' : `${esc(String(slot.remaining))} spot${slot.remaining !== 1 ? 's' : ''} left`}</div>
+        <div class="slot-badge">${badgeText}</div>
         <div class="slot-capacity">${esc(String(slot.registered))} / ${esc(String(slot.capacity))} registered</div>
       `;
-      if (!slot.full) card.addEventListener('click', () => selectSlot(slot.id));
+      if (!isUnavailable) card.addEventListener('click', () => selectSlot(slot.id));
       grid.appendChild(card);
     });
   }
